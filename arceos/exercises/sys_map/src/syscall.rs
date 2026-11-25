@@ -1,13 +1,16 @@
 #![allow(dead_code)]
 
 use core::ffi::{c_void, c_char, c_int};
+use axerrno::LinuxResult;
 use axhal::arch::TrapFrame;
 use axhal::trap::{register_trap_handler, SYSCALL};
-use axerrno::LinuxError;
 use axtask::current;
+use axerrno::LinuxError;
+use alloc::vec;
 use axtask::TaskExtRef;
 use axhal::paging::MappingFlags;
 use arceos_posix_api as api;
+use memory_addr::{PAGE_SIZE_4K, VirtAddr, VirtAddrRange};
 
 const SYS_IOCTL: usize = 29;
 const SYS_OPENAT: usize = 56;
@@ -138,9 +141,48 @@ fn sys_mmap(
     prot: i32,
     flags: i32,
     fd: i32,
-    _offset: isize,
+    offset: isize,
 ) -> isize {
-    unimplemented!("no sys_mmap!");
+    let prot = MmapProt::from_bits_truncate(prot);
+    let flags = MmapFlags::from_bits_truncate(flags);
+    let map_flag = MappingFlags::from(prot);
+    if length == 0 {
+        return -LinuxError::EINVAL.code() as _;
+    }
+    let size = (length + PAGE_SIZE_4K - 1) & !(PAGE_SIZE_4K - 1);
+    let mut data = vec![0u8; size];
+    if !flags.contains(MmapFlags::MAP_ANONYMOUS) && fd >= 0 {
+        if api::sys_lseek(fd, offset as _, 0) < 0 {
+            return -LinuxError::EINVAL.code() as _;
+        }
+        let n = api::sys_read(fd, data.as_mut_ptr() as *mut _, size);
+        if n < 0 {
+            return n as isize;
+        }
+    }
+
+    let curr = current();
+    let aspace = curr.task_ext().aspace.clone();
+    let mut uspace = aspace.lock();
+    let vaddr = if !addr.is_null() {
+        VirtAddr::from_usize(addr as usize)
+    } else {
+        let hint = VirtAddr::from_usize(0x10000000);
+        let limit = VirtAddrRange::from_start_size(uspace.base(), uspace.size());
+        match uspace.find_free_area(hint, size, limit) {
+            Some(va) => va,
+            None => return -LinuxError::ENOMEM.code() as _,
+        }
+    };
+    if let Err(e) = uspace.map_alloc(vaddr, size, map_flag, true) {
+        return -LinuxError::from(e).code() as _;
+    }
+    if !flags.contains(MmapFlags::MAP_ANONYMOUS) && fd >= 0 {
+        if let Err(e) = uspace.write(vaddr, &data) {
+            return -LinuxError::from(e).code() as _;
+        }
+    }
+    vaddr.as_usize() as _
 }
 
 fn sys_openat(dfd: c_int, fname: *const c_char, flags: c_int, mode: api::ctypes::mode_t) -> isize {

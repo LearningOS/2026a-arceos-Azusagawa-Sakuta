@@ -17,8 +17,7 @@ make disk_img
 
 make run A=exercises/ramfs_rename/ BLK=y | tee "$tmp_file"
 
-output=$(tail -n1 "$tmp_file" | grep -a "$grep_content")
-
+output=$(tail -n2 "$tmp_file" | grep -Ea "$grep_content")
 
 
 if [[ -z "$output" ]] ;then

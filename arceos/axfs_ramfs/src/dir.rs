@@ -165,6 +165,40 @@ impl VfsNodeOps for DirNode {
         }
     }
 
+    fn rename(&self, src: &str, dst: &str) -> VfsResult {
+        let (src_name, src_rest) = split_path(src);
+        let (dst_name, dst_rest) = split_path(dst);
+        match (src_rest, dst_rest) {
+            (None, None) => {
+                if src_name.is_empty() || dst_name.is_empty() ||
+                    src_name == "." || src_name == ".." ||
+                    dst_name == "." || dst_name == ".." {
+                    return Err(VfsError::InvalidInput);
+                }
+                let mut children = self.children.write();
+                if !children.contains_key(src_name) {
+                    return Err(VfsError::NotFound);
+                }
+                if children.contains_key(dst_name) {
+                    return Err(VfsError::InvalidInput); // WIP
+                }
+                let node = children.remove(src_name).ok_or(VfsError::NotFound)?;
+                children.insert(dst_name.into(), node);
+                Ok(())
+            },
+
+            (Some(src), Some(dst)) if src_name == dst_name => {
+                let child = self.children.read().get(src_name).cloned()
+                    .ok_or(VfsError::NotFound)?;
+                let dir = child.as_any().downcast_ref::<DirNode>()
+                    .ok_or(VfsError::InvalidInput)?;
+                dir.rename(src, dst)
+            },
+
+            _ => Err(VfsError::Unsupported),
+        }
+    }
+
     axfs_vfs::impl_vfs_dir_default! {}
 }
 
