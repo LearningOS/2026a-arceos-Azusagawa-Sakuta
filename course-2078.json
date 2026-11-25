@@ -2,8 +2,8 @@
   "schema": 1,
   "courseId": 2078,
   "repository": "LearningOS/2026a-arceos-Azusagawa-Sakuta",
-  "commit": "824bad5f7f8e0ca96130a9c2cf17dd0e337548f8",
-  "score": 300,
+  "commit": "dbf271c756d6711f5c6ae01cd59aef439d5b3162",
+  "score": 600,
   "totalScore": 600,
   "exercises": [
     {
@@ -16,22 +16,22 @@
     {
       "name": "ramfs_rename",
       "max": 100,
-      "score": 0,
-      "status": "fail",
+      "score": 100,
+      "status": "pass",
       "exitCode": 0
     },
     {
       "name": "alt_alloc",
       "max": 100,
-      "score": 0,
-      "status": "fail",
+      "score": 100,
+      "status": "pass",
       "exitCode": 0
     },
     {
       "name": "support_hashmap",
       "max": 100,
-      "score": 0,
-      "status": "fail",
+      "score": 100,
+      "status": "pass",
       "exitCode": 0
     },
     {
@@ -50,9 +50,9 @@
     }
   ],
   "student": "Azusagawa-Sakuta",
-  "runId": "45607768155",
+  "runId": "45608197890",
   "runAttempt": "1",
   "upload": {
-    "status": "accepted"
+    "status": "pending"
   }
 }
